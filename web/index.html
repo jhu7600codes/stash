@@ -44,12 +44,28 @@ p{color:var(--dim);margin:0 auto 28px;max-width:520px}
 </main>
 <div id="ios"><div class="box">
   <b style="font-size:20px">Install Stash on your iPhone</b>
+  <p style="color:var(--dim);font-size:14px;margin:6px 0 14px">Just want to try it? The first option is the whole app and needs nothing.</p>
+
+  <b>Add to Home Screen — free, no account, nothing to sign</b>
   <ol>
-    <li>Tap <span class="share"></span> <b>Share</b> at the bottom of Safari</li>
-    <li>Scroll down, tap <b>Add to Home Screen</b></li>
-    <li>Tap <b>Add</b>, then open Stash from your home screen</li>
+    <li>Open this page in <b>Safari</b></li>
+    <li>Tap <span class="share"></span> <b>Share</b> at the bottom</li>
+    <li>Scroll down, tap <b>Add to Home Screen</b> → <b>Add</b></li>
   </ol>
-  <span style="color:var(--dim);font-size:14px">Has to be Safari. It opens full screen like a normal app, with lock screen controls and offline downloads.</span>
+  <span style="color:var(--dim);font-size:14px">Opens full screen like a real app, with lock screen controls and offline downloads. This is all most people need.</span>
+
+  <hr style="border:0;border-top:1px solid #333;margin:18px 0">
+  <b>Want the native .ipa?</b>
+  <p style="color:var(--dim);font-size:14px;margin:6px 0 10px">The build is <b>unsigned</b>, so it has to be signed to your device. The two ways that last:</p>
+  <ul style="padding-left:20px;margin:0 0 12px">
+    <li style="margin:6px 0"><b>AltStore / SideStore</b> — signs with your own free Apple ID. Needs a computer once to set up, then refreshes over Wi-Fi.</li>
+    <li style="margin:6px 0"><b>Your own Apple certificate</b> — a paid developer account, the most stable option.</li>
+  </ul>
+  <a class="btn primary" href="https://github.com/jhu7600codes/stash/releases/download/ios/Stash.ipa" style="width:100%">Download Stash.ipa</a>
+
+  <p style="color:#e8a; font-size:13px; line-height:1.5; margin:14px 0 0">
+    Heads up: free <b>shared signing certificates</b> (like khoindvn and similar) aren't yours — Apple revokes them constantly, so the app can die mid-use at any time, and we don't link them here. For actually using Stash, sign it with your own Apple ID (AltStore/SideStore) or your own certificate.
+  </p>
   <button class="btn" style="width:100%;margin-top:16px" onclick="document.getElementById('ios').style.display='none'">Got it</button>
 </div><div class="arrow">↓</div></div>
 <script>

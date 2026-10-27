@@ -64,9 +64,23 @@ async function search(q) {
 }
 
 const streamCache = new Map();
+// soundcloud: its server-side helper gives an hls playlist; safari plays it, others get hls.js
+async function scStream(t) {
+  const r = await fetch("/api/sc?stream=" + encodeURIComponent(t.source));
+  if (!r.ok) throw new Error("SoundCloud didn't answer");
+  return r.json();
+}
+let hlsPlayer = null;
+async function setSource(src, hls) {
+  hlsPlayer?.destroy(); hlsPlayer = null;
+  if (!hls || audio.canPlayType("application/vnd.apple.mpegurl")) { audio.src = src; return; }
+  if (!window.Hls) await new Promise((ok, fail) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js"; sc.onload = ok; sc.onerror = fail; document.head.appendChild(sc); });
+  hlsPlayer = new Hls(); hlsPlayer.loadSource(src); hlsPlayer.attachMedia(audio);
+  await new Promise(ok => hlsPlayer.on(Hls.Events.MANIFEST_PARSED, ok));
+}
 async function streamUrl(t) {
   let v = videoIdOf(t);
-  if (!v) { // a soundcloud / bandcamp song from the app: find it on youtube
+  if (!v) { // a soundcloud / bandcamp song: find it on youtube (downloads need a plain file)
     const hits = await search(`${t.artist} ${t.title}`);
     if (!hits.length) throw new Error("Not found");
     v = t.videoId = hits[0].videoId;
@@ -186,10 +200,12 @@ async function load(i) {
   try {
     let src;
     const saved = downloaded.has(t.id) ? await idb("readonly", s => s.get(t.id)) : null;
+    let hls = false;
     if (saved) { if (objectUrl) URL.revokeObjectURL(objectUrl); src = objectUrl = URL.createObjectURL(saved.blob); }
+    else if (t.provider === "soundcloud") { const sc = await scStream(t); src = sc.url; hls = sc.hls; }
     else src = await streamUrl(t);
     if (my !== loadToken) return;
-    audio.src = src; await audio.play().catch(() => {});
+    await setSource(src, hls); await audio.play().catch(() => {});
     setStatus(""); prefetch();
   } catch (e) {
     if (my !== loadToken) return;
@@ -197,7 +213,7 @@ async function load(i) {
     setTimeout(() => { if (my === loadToken && qi < queue.length - 1) load(qi + 1); }, 1500);
   }
 }
-function prefetch() { const n = queue[qi + 1]; if (n && !downloaded.has(n.id)) streamUrl(n).catch(() => {}); }
+function prefetch() { const n = queue[qi + 1]; if (n && !downloaded.has(n.id) && n.provider !== "soundcloud") streamUrl(n).catch(() => {}); }
 const next = () => { if (qi < queue.length - 1) load(qi + 1); else if (repeat === 1) load(0); };
 const prev = () => { if (audio.currentTime > 3 || qi === 0) audio.currentTime = 0; else load(qi - 1); };
 audio.onended = () => repeat === 2 ? (audio.currentTime = 0, audio.play()) : next();
@@ -395,6 +411,26 @@ const likedCover = `<div class="cov liked"><span class="i i-heart" style="width:
 const dlCover = `<div class="cov liked" style="background:linear-gradient(135deg,#0e7a5f,#5fdbc9)"><span class="i i-dl" style="width:40%;height:40%;color:#fff"></span></div>`;
 const pin = p => prefs.pinned.includes(p.name) ? `<span class="pin">PINNED</span> ` : "";
 
+/** made for you: a mix from what you play, plus "this is" mixes of your top artists */
+function topArtists() {
+  const count = new Map();
+  [...ls.get("recent", []), ...likedTracks()].forEach(t => { const a = (t.artist || "").split(/,|&| feat\.? | ft\.? | x | × /i)[0].trim(); if (a) count.set(a, (count.get(a) || 0) + 1); });
+  return [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(e => e[0]);
+}
+function madeForYou() {
+  const arts = topArtists(); if (!arts.length) return "";
+  const colors = ["#e8115b", "#1e3264", "#8d67ab", "#148a08", "#ba5d07", "#477d95"];
+  return `<h2>Made for you</h2><div class="hscroll">
+    <a class="card" href="#/mix"><div class="cov mix" style="background:linear-gradient(135deg,#7CC8F8,#4b2bd6)"><b>Your mix</b><small>Stash</small></div><div class="t2">Songs like what you play</div></a>
+    ${arts.map((a, i) => `<a class="card" href="#/artist/${encodeURIComponent(a)}"><div class="cov mix" style="background:${colors[i % colors.length]}"><small>This is</small><b>${h(a)}</b></div><div class="t2">${h(a)} and more</div></a>`).join("")}</div>`;
+}
+async function yourMix() {
+  const seeds = [...ls.get("recent", []).slice(0, 3), ...likedTracks().slice(0, 2)];
+  const lists = await Promise.all(seeds.map(t => similar(t).catch(() => [])));
+  const seen = new Set(seeds.map(t => t.id)), out = [];
+  for (let k = 0; k < 12; k++) lists.forEach(l => { const t = l[k]; if (t && !seen.has(t.id)) { seen.add(t.id); out.push(t); } });
+  return out;
+}
 function home() {
   const recent = ls.get("recent", []), pls = pinnedFirst(playlists());
   const hr = new Date().getHours(), hi = hr < 5 ? "Good night" : hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
@@ -405,29 +441,78 @@ function home() {
       ${pls.slice(0, 6).map(p => `<a class="q" href="#/pl/${plIndex(p)}"><img src="${h(plCover(p))}" alt=""><span>${h(p.name)}</span></a>`).join("")}
     </div>
     ${session ? "" : `<h2>Your playlists, here too</h2><p class="dim">Log in with your Stash account (Library tab) to get the playlists and liked songs from your phone. Or just start: everything you like and make here is saved on this device.</p>`}
+    ${madeForYou()}
     ${recent.length ? `<h2>Recently played</h2><div id="rec">${recent.slice(0, 12).map(rowHtml).join("")}</div>` : `<h2>Get started</h2><p class="dim">Search for anything. On iPhone: Share → Add to Home Screen for the full app.</p>`}
     ${pls.length > 6 ? `<h2>Your playlists</h2><div class="hscroll">${pls.map(p => `<a class="card" href="#/pl/${plIndex(p)}"><img class="cov" loading="lazy" src="${h(plCover(p))}" alt=""><div class="t1">${h(p.name)}</div><div class="t2">${visible(p.tracks).length} songs</div></a>`).join("")}</div>` : ""}
   </div>`;
   if (recent.length) bindRows($("#rec"), recent);
 }
 
-let lastQuery = "", lastResults = [];
-function searchView() {
-  view.innerHTML = `<div><h1>Search</h1><form class="searchBox" id="sf"><input class="field" id="sq" type="search" placeholder="Songs or artists" value="${h(lastQuery)}" autocomplete="off" enterkeyhint="search"></form><div id="sr"></div></div>`;
-  const paint = () => { $("#sr").innerHTML = lastResults.map(rowHtml).join(""); bindRows($("#sr"), lastResults); };
-  if (lastResults.length) paint();
-  let timer;
-  const run = async () => {
-    const q = $("#sq").value.trim(); if (!q || q === lastQuery) return; lastQuery = q;
-    $("#sr").innerHTML = `<p class="dim">Searching…</p>`;
-    try { lastResults = await search(q); if (q === lastQuery) lastResults.length ? paint() : ($("#sr").innerHTML = `<p class="dim">Nothing found</p>`); }
-    catch { $("#sr").innerHTML = `<p class="dim">${navigator.onLine ? "Search servers are busy, try again" : "You're offline. Downloads still play (Library → Downloads)"}</p>`; }
-  };
-  $("#sq").oninput = () => { clearTimeout(timer); timer = setTimeout(run, 450); };
-  $("#sf").onsubmit = e => { e.preventDefault(); $("#sq").blur(); run(); };
-  if (!lastResults.length) setTimeout(() => $("#sq").focus(), 50);
+let lastQuery = "", lastRes = null;
+async function searchAll(q) {
+  if (q.startsWith("#")) { // #miku, #teto, #vocarock: vocadb
+    const r = await fetch("/api/vocadb?tag=" + encodeURIComponent(q.slice(1))); return { songs: r.ok ? await r.json() : [], sc: [], pls: [] };
+  }
+  const [songs, sc, pls] = await Promise.all([
+    search(q).catch(() => []),
+    fetch("/api/sc?q=" + encodeURIComponent(q)).then(r => r.ok ? r.json() : []).catch(() => []),
+    piped("/search?filter=playlists&q=" + encodeURIComponent(q)).then(d => (d.items || []).filter(i => i.url?.includes("list="))).catch(() => []),
+  ]);
+  if (!songs.length && !sc.length) throw new Error("nothing");
+  return { songs, sc: sc.slice(0, 8), pls: pls.slice(0, 10) };
 }
-
+function searchView() {
+  view.innerHTML = `<div><h1>Search</h1><form class="searchBox" id="sf"><input class="field" id="sq" type="search" placeholder="Songs, artists or #tags (#miku)" value="${h(lastQuery)}" autocomplete="off" enterkeyhint="search"></form><div id="sr"></div>
+    ${lastRes ? "" : `<div id="tags"><h2>Browse</h2>${["#miku", "#teto", "#gumi", "#len", "#rin", "#kaito", "#meiko", "#luka", "#vocarock", "#utau"].map(t => `<button class="chip">${t}</button>`).join("")}</div>`}</div>`;
+  const paint = () => {
+    const r = lastRes;
+    $("#sr").innerHTML = (r.songs.length ? `<h2>Songs</h2><div id="s1">${r.songs.map(rowHtml).join("")}</div>` : "")
+      + (r.pls.length ? `<h2>Playlists</h2><div class="hscroll">${r.pls.map(p => `<a class="card" href="#/ytpl/${encodeURIComponent(new URL(p.url, location.href).searchParams.get("list"))}"><img class="cov" loading="lazy" src="${h(p.thumbnail)}" alt=""><div class="t1">${h(p.name)}</div><div class="t2">${h(p.uploaderName || "")}</div></a>`).join("")}</div>` : "")
+      + (r.sc.length ? `<h2>SoundCloud</h2><div id="s2">${r.sc.map(rowHtml).join("")}</div>` : "");
+    if (r.songs.length) bindRows($("#s1"), r.songs); if (r.sc.length) bindRows($("#s2"), r.sc);
+  };
+  if (lastRes) paint();
+  let timer;
+  const run = async (force) => {
+    const q = $("#sq").value.trim(); if (!q || (q === lastQuery && !force)) return; lastQuery = q; $("#tags")?.remove();
+    $("#sr").innerHTML = `<p class="dim">Searching…</p>`;
+    try { const r = await searchAll(q); if (q === lastQuery) { lastRes = r; paint(); } }
+    catch { $("#sr").innerHTML = `<p class="dim">${navigator.onLine ? "Nothing found (or the search servers are busy, try again)" : "You're offline. Downloads still play (Library → Downloads)"}</p>`; }
+  };
+  $("#sq").oninput = () => { clearTimeout(timer); timer = setTimeout(run, 500); };
+  $("#sf").onsubmit = e => { e.preventDefault(); $("#sq").blur(); run(true); };
+  view.querySelectorAll("#tags .chip").forEach(c => c.onclick = () => { $("#sq").value = c.textContent; run(true); });
+  if (!lastRes) setTimeout(() => $("#sq").focus(), 50);
+}
+// a spotify playlist / album link -> a stash playlist, every song found on youtube (like the app's import)
+async function importSpotify() {
+  const link = prompt("Paste a Spotify playlist or album link"); if (!link?.trim()) return;
+  toast("Reading the playlist…");
+  const r = await fetch("/api/spotify?link=" + encodeURIComponent(link.trim()));
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) return toast(j.error || "Couldn't read that link");
+  let name = j.name; while (library.some(p => p.name === name)) name += " (2)";
+  const p = { kind: "playlist", name, cover_url: j.cover, origin: "spotify", origin_id: j.origin_id, tracks: [] };
+  library.push(p); location.hash = "#/pl/" + plIndex(p);
+  const out = new Array(j.tracks.length); let done = 0, found = 0, next = 0;
+  const worker = async () => {
+    while (next < j.tracks.length) {
+      const k = next++, s = j.tracks[k];
+      const hit = (await search(`${s.artist.split(",")[0]} ${s.title}`).catch(() => []))
+        .find(x => !s.duration || !x.duration || Math.abs(x.duration - s.duration) < 30000);
+      out[k] = hit ? toTrackJson({ ...hit, album: s.album, art: s.art || hit.art }) : { missing: true, title: s.title, artist: s.artist, album: s.album, duration: s.duration };
+      if (hit) found++; done++;
+      if (done % 10 === 0 || done === j.tracks.length) { p.tracks = out.filter(Boolean); toast(`Moving ${name}: ${done}/${j.tracks.length}`); if (location.hash === "#/pl/" + plIndex(p)) route(); }
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  p.tracks = out.filter(Boolean); saveLibrary(); route();
+  toast(`${name}: ${found} of ${j.tracks.length} songs found`);
+}
+async function ytPlaylist(id) {
+  const d = await piped("/playlists/" + encodeURIComponent(id));
+  return { name: d.name, cover: d.thumbnailUrl, tracks: (d.relatedStreams || []).filter(i => i.url?.includes("watch")).map(fromPiped) };
+}
 function libraryView() {
   const pls = pinnedFirst(playlists());
   view.innerHTML = `<div><div class="titleRow"><h1>Library</h1><div><button class="icon" id="newPl" aria-label="New playlist"><span class="i i-plus"></span></button><a class="icon" href="#/settings" aria-label="Settings"><span class="i i-gear"></span></a></div></div>
@@ -439,7 +524,11 @@ function libraryView() {
       <a class="row" href="#/downloads">${dlCover.replace('class="cov liked"', 'class="ph liked"')}<div class="txt"><div class="t1">Downloads</div><div class="t2">${downloaded.size} songs · offline</div></div></a>
       ${pls.map(p => `<a class="row" href="#/pl/${plIndex(p)}"><img loading="lazy" src="${h(plCover(p))}" alt=""><div class="txt"><div class="t1">${h(p.name)}</div><div class="t2">${pin(p)}Playlist · ${visible(p.tracks).length} songs${p.origin && p.origin !== "local" ? " · from " + h(p.origin) : ""}</div></div></a>`).join("")}
     </div></div>`;
-  $("#newPl").onclick = () => newPlaylist(p => location.hash = "#/pl/" + plIndex(p));
+  $("#newPl").onclick = () => sheet("Create", [
+    ["New playlist", () => newPlaylist(p => location.hash = "#/pl/" + plIndex(p))],
+    ["Import from Spotify (link)", importSpotify],
+    ["Pair a TV or tablet", () => location.hash = "#/settings"],
+  ]);
   const creds = () => [$("#le").value.trim(), $("#lp").value];
   $("#lf")?.addEventListener("submit", async e => {
     e.preventDefault(); const [email, password] = creds();
@@ -540,6 +629,12 @@ function route() {
   else if (page === "downloads") downloadsView();
   else if (page === "pl" && library[arg]) { const p = library[arg], tr = visible(p.tracks); collection(p.name, `${tr.length} songs`, `<img class="cov" src="${h(plCover(p))}" alt="">`, tr, { pl: p }).onclick = () => download(tr); }
   else if (page === "artist") listView(arg, l => `Artist · ${l.length} songs`, () => search(arg));
+  else if (page === "ytpl") listView("Playlist", l => `${l.length} songs · YouTube Music`, async () => {
+    const d = await ytPlaylist(arg); setTimeout(() => { const t = view.querySelector(".colHead h1"); if (t) t.textContent = d.name;
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = "Save to library";
+      b.onclick = () => { if (library.some(p => p.name === d.name)) return toast("Already in your library"); library.push({ kind: "playlist", name: d.name, cover_url: d.cover, origin: "youtube", origin_id: arg, tracks: d.tracks.map(toTrackJson) }); saveLibrary(); toast("Saved to your library"); };
+      view.querySelector(".btns")?.appendChild(b); }, 0); return d.tracks; })
+  else if (page === "mix") listView("Your mix", l => `Made for you · ${l.length} songs`, yourMix)
   else if (page === "similar") { const t = JSON.parse(arg); listView("Similar to " + t.title, l => `${l.length} songs`, () => similar(t)); }
   else home();
   view.scrollTop = 0;

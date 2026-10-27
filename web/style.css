@@ -158,3 +158,8 @@ a.icon,a.row,a.card,a.q,a.gi{color:inherit;text-decoration:none}
 .actOverlay .act>.actTitle{border-radius:14px 14px 0 0}
 .actOverlay .act>.actList{background:none;padding:0}
 .row .ph.liked{background:linear-gradient(135deg,#4b2bd6,#9b8cf2)}
+
+.cov.mix{display:flex;flex-direction:column;justify-content:flex-end;padding:12px;color:#fff;text-align:left}
+.cov.mix b{font-size:20px;font-weight:800;line-height:1.1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cov.mix small{opacity:.85;font-weight:600}
+#tags .chip{color:var(--fg);font-size:15px;padding:8px 14px}

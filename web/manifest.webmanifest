@@ -2,7 +2,7 @@
   "name": "Stash",
   "short_name": "Stash",
   "description": "All your music, from everywhere. Works offline.",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

@@ -2,70 +2,69 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Stash</title>
-<meta name="description" content="Stash: all your music, from everywhere. Works offline.">
+<meta name="description" content="Stash: all your music, from everywhere. Free, no ads, works offline.">
 <meta name="theme-color" content="#0b0d12">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Stash">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-180.png">
-<link rel="stylesheet" href="/style.css">
+<style>
+:root{--bg:#0b0d12;--card:#181c26;--card2:#222837;--fg:#f1f3f8;--dim:#9aa3b5;--accent:#7CC8F8;--ink:#0B1E33}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#1b3550,transparent),var(--bg);color:var(--fg);font:17px/1.5 -apple-system,BlinkMacSystemFont,system-ui,Roboto,sans-serif;min-height:100vh}
+main{max-width:760px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 32px) 20px 60px;text-align:center}
+.logo{width:96px;height:96px;border-radius:24px;box-shadow:0 20px 50px #0009}
+h1{font-size:clamp(36px,8vw,56px);line-height:1.05;margin:24px 0 12px;letter-spacing:-1px}
+p{color:var(--dim);margin:0 auto 28px;max-width:520px}
+.btns{display:flex;flex-direction:column;gap:12px;max-width:340px;margin:0 auto}
+.btn{display:block;padding:16px 20px;border-radius:16px;background:var(--card2);color:var(--fg);text-decoration:none;font-weight:700;border:0;font-size:17px;cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--ink)}
+.btn small{display:block;font-weight:500;opacity:.7;font-size:13px}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:48px;text-align:left}
+.feat div{background:var(--card);border-radius:16px;padding:16px}.feat b{display:block;margin-bottom:4px}.feat span{color:var(--dim);font-size:15px}
+#ios{position:fixed;inset:0;background:#000c;display:none;align-items:flex-end;justify-content:center;z-index:9}
+#ios .box{background:var(--card2);margin:12px;padding:24px;border-radius:20px;max-width:420px;text-align:left;margin-bottom:calc(env(safe-area-inset-bottom) + 70px)}
+#ios ol{padding-left:22px;margin:8px 0 16px}#ios li{margin:8px 0}
+.share{display:inline-block;width:18px;height:22px;vertical-align:-4px;background:var(--accent);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 24'%3E%3Cpath d='M10 0 5 5l1.4 1.4L9 3.8V15h2V3.8l2.6 2.6L15 5zM2 9v15h16V9h-5v2h3v11H4V11h3V9z'/%3E%3C/svg%3E") center/contain no-repeat}
+.arrow{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 8px);left:50%;transform:translateX(-50%);font-size:40px;animation:bob 1s infinite alternate}
+@keyframes bob{to{transform:translate(-50%,8px)}}
+</style>
 </head>
 <body>
-<div id="app">
-  <main id="view"></main>
-
-  <div id="mini" hidden>
-    <img id="miniArt" alt="">
-    <div class="miniText"><div id="miniTitle" class="t1"></div><div id="miniArtist" class="t2"></div></div>
-    <button id="miniPlay" class="icon" aria-label="Play / pause"></button>
-    <div id="miniProgress"><div></div></div>
+<main>
+  <img class="logo" src="/icon-180.png" alt="Stash">
+  <h1>All your music.<br>Free. Everywhere.</h1>
+  <p>Search anything, make playlists, download songs to play offline, live karaoke lyrics with translations. No ads, no account needed.</p>
+  <div class="btns" id="btns"></div>
+  <div class="feat">
+    <div><b>Offline</b><span>Download songs and whole playlists, they play with no internet.</span></div>
+    <div><b>Karaoke lyrics</b><span>Words light up as they're sung, with translations.</span></div>
+    <div><b>Your playlists</b><span>Bring them over from Spotify on the Android app, they show up everywhere.</span></div>
   </div>
-
-  <nav id="tabs">
-    <button data-tab="home"><span class="i i-home"></span>Home</button>
-    <button data-tab="search"><span class="i i-search"></span>Search</button>
-    <button data-tab="library"><span class="i i-library"></span>Library</button>
-  </nav>
-
-  <section id="player" class="sheet" hidden>
-    <div class="sheetBg" id="playerBg"></div>
-    <header class="sheetHead">
-      <button class="icon" id="playerClose" aria-label="Close"><span class="i i-down"></span></button>
-      <div class="sheetTitle">Now playing</div>
-      <button class="icon" id="playerDl" aria-label="Download"><span class="i i-dl"></span></button>
-    </header>
-    <div id="playerMain">
-      <img id="pArt" alt="">
-      <div class="pInfo">
-        <div><div id="pTitle" class="pt"></div><div id="pArtist" class="pa"></div></div>
-        <button class="icon" id="pLike" aria-label="Like"><span class="i i-heart"></span></button>
-      </div>
-      <input type="range" id="pSeek" min="0" max="1000" value="0">
-      <div class="times"><span id="pPos">0:00</span><span id="pStatus"></span><span id="pDur">0:00</span></div>
-      <div class="controls">
-        <button class="icon" id="pShuffle" aria-label="Shuffle"><span class="i i-shuffle"></span></button>
-        <button class="icon big" id="pPrev" aria-label="Previous"><span class="i i-prev"></span></button>
-        <button class="play" id="pPlay" aria-label="Play / pause"></button>
-        <button class="icon big" id="pNext" aria-label="Next"><span class="i i-next"></span></button>
-        <button class="icon" id="pRepeat" aria-label="Repeat"><span class="i i-repeat"></span></button>
-      </div>
-      <div class="bottomRow">
-        <button class="icon" id="pLyricsBtn" aria-label="Lyrics"><span class="i i-lyrics"></span></button>
-        <button class="icon" id="pQueueBtn" aria-label="Queue"><span class="i i-queue"></span></button>
-      </div>
-    </div>
-    <div id="lyrics" hidden></div>
-    <div id="queue" hidden></div>
-  </section>
-
-  <div id="toast" hidden></div>
-</div>
-<audio id="audio" preload="auto" playsinline></audio>
-<script src="/app.js"></script>
+</main>
+<div id="ios"><div class="box">
+  <b style="font-size:20px">Install Stash on your iPhone</b>
+  <ol>
+    <li>Tap <span class="share"></span> <b>Share</b> at the bottom of Safari</li>
+    <li>Scroll down, tap <b>Add to Home Screen</b></li>
+    <li>Tap <b>Add</b>, then open Stash from your home screen</li>
+  </ol>
+  <span style="color:var(--dim);font-size:14px">Has to be Safari. It opens full screen like a normal app, with lock screen controls and offline downloads.</span>
+  <button class="btn" style="width:100%;margin-top:16px" onclick="document.getElementById('ios').style.display='none'">Got it</button>
+</div><div class="arrow">↓</div></div>
+<script>
+const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const android = /Android/.test(ua);
+const APK = "https://github.com/jhu7600codes/stash/raw/main/dist/stash.apk", TV = "https://github.com/jhu7600codes/stash/raw/main/dist/stash-armv7.apk";
+let html = "";
+if (ios) html += `<button class="btn primary" id="installIos">Install on iPhone<small>Adds Stash to your home screen</small></button><a class="btn" href="/app">Use it in Safari</a>`;
+else if (android) html += `<a class="btn primary" href="${APK}">Download for Android<small>The full app, best experience</small></a><a class="btn" href="/app">Use the web version</a>`;
+else html += `<a class="btn primary" href="/app">Open Stash<small>Right here in your browser</small></a><a class="btn" href="${APK}">Android app</a>`;
+html += `<a class="btn" href="${TV}">Android TV (older 32-bit TVs)</a>`;
+document.getElementById("btns").innerHTML = html;
+document.getElementById("installIos")?.addEventListener("click", () => document.getElementById("ios").style.display = "flex");
+// opened from the home screen icon: go straight into the app
+if (navigator.standalone || matchMedia("(display-mode: standalone)").matches) location.replace("/app");
+</script>
 </body>
 </html>

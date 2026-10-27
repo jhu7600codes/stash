@@ -1,5 +1,6 @@
 {
   "buildCommand": "",
   "installCommand": "",
-  "outputDirectory": "web"
+  "outputDirectory": "web",
+  "rewrites": [{ "source": "/app", "destination": "/app/index.html" }]
 }

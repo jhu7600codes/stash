@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Stash</title>
+<meta name="description" content="Stash: all your music, from everywhere. Works offline.">
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stash">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <main id="view"></main>
+
+  <div id="mini" hidden>
+    <img id="miniArt" alt="">
+    <div class="miniText"><div id="miniTitle" class="t1"></div><div id="miniArtist" class="t2"></div></div>
+    <button id="miniPlay" class="icon" aria-label="Play / pause"></button>
+    <div id="miniProgress"><div></div></div>
+  </div>
+
+  <nav id="tabs">
+    <button data-tab="home"><span class="i i-home"></span>Home</button>
+    <button data-tab="search"><span class="i i-search"></span>Search</button>
+    <button data-tab="library"><span class="i i-library"></span>Library</button>
+  </nav>
+
+  <section id="player" class="sheet" hidden>
+    <div class="sheetBg" id="playerBg"></div>
+    <header class="sheetHead">
+      <button class="icon" id="playerClose" aria-label="Close"><span class="i i-down"></span></button>
+      <div class="sheetTitle">Now playing</div>
+      <button class="icon" id="playerDl" aria-label="Download"><span class="i i-dl"></span></button>
+    </header>
+    <div id="playerMain">
+      <img id="pArt" alt="">
+      <div class="pInfo">
+        <div><div id="pTitle" class="pt"></div><div id="pArtist" class="pa"></div></div>
+        <button class="icon" id="pLike" aria-label="Like"><span class="i i-heart"></span></button>
+      </div>
+      <input type="range" id="pSeek" min="0" max="1000" value="0">
+      <div class="times"><span id="pPos">0:00</span><span id="pStatus"></span><span id="pDur">0:00</span></div>
+      <div class="controls">
+        <button class="icon" id="pShuffle" aria-label="Shuffle"><span class="i i-shuffle"></span></button>
+        <button class="icon big" id="pPrev" aria-label="Previous"><span class="i i-prev"></span></button>
+        <button class="play" id="pPlay" aria-label="Play / pause"></button>
+        <button class="icon big" id="pNext" aria-label="Next"><span class="i i-next"></span></button>
+        <button class="icon" id="pRepeat" aria-label="Repeat"><span class="i i-repeat"></span></button>
+      </div>
+      <div class="bottomRow">
+        <button class="icon" id="pLyricsBtn" aria-label="Lyrics"><span class="i i-lyrics"></span></button>
+        <button class="icon" id="pQueueBtn" aria-label="Queue"><span class="i i-queue"></span></button>
+      </div>
+    </div>
+    <div id="lyrics" hidden></div>
+    <div id="queue" hidden></div>
+  </section>
+
+  <div id="toast" hidden></div>
+</div>
+<audio id="audio" preload="auto" playsinline></audio>
+<script src="/app.js"></script>
+</body>
+</html>

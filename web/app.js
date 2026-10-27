@@ -221,8 +221,8 @@ audio.onplay = audio.onpause = () => { paintPlay(); if ("mediaSession" in naviga
 audio.ontimeupdate = () => {
   const d = audio.duration * 1000 || cur()?.duration || 0, p = audio.currentTime * 1000;
   $("#miniProgress div").style.width = d ? (p / d * 100) + "%" : "0";
-  if (!seeking) { const v = d ? p / d * 1000 : 0; $("#pSeek").value = v; $("#pSeek").style.setProperty("--p", v / 10 + "%"); }
-  $("#pPos").textContent = fmt(p); $("#pDur").textContent = fmt(d);
+  if (!seeking) { const v = d ? p / d * 1000 : 0; for (const el of [$("#pSeek"), $("#miniSeek")]) { el.value = v; el.style.setProperty("--p", v / 10 + "%"); } }
+  $("#pPos").textContent = $("#miniPos").textContent = fmt(p); $("#pDur").textContent = $("#miniDur").textContent = fmt(d);
 };
 audio.onwaiting = () => setStatus("Buffering…"); audio.onplaying = () => setStatus("");
 const setStatus = s => $("#pStatus").textContent = s;
@@ -247,7 +247,8 @@ function paintPlayer() {
   $("#miniTitle").textContent = $("#pTitle").textContent = t.title;
   $("#miniArtist").textContent = $("#pArtist").textContent = t.artist;
   $("#playerBg").style.backgroundImage = t.art ? `url("${t.art}")` : "";
-  $("#pLike").classList.toggle("on", isLiked(t));
+  $("#pLike").classList.toggle("on", isLiked(t)); $("#miniLike").classList.toggle("on", isLiked(t));
+  $("#miniShuffle").classList.toggle("on", shuffle); $("#miniRepeat").classList.toggle("on", repeat > 0);
   $("#playerDl").innerHTML = `<span class="i ${downloaded.has(t.id) ? "i-done" : "i-dl"}"></span>`;
   $("#pShuffle").classList.toggle("on", shuffle); $("#pRepeat").classList.toggle("on", repeat > 0);
   $("#pRepeat").style.opacity = repeat === 2 ? .6 : 1;
@@ -261,7 +262,16 @@ function paintRows() { document.querySelectorAll(".row[data-id]").forEach(r => r
 const openPlayer = () => { $("#player").hidden = false; $("#player").classList.remove("closing"); };
 function closePlayer() { const p = $("#player"); p.classList.add("closing"); setTimeout(() => { p.hidden = true; p.classList.remove("closing"); }, 260); }
 $("#mini").onclick = e => { if (!e.target.closest("#miniPlay")) openPlayer(); };
-$("#miniPlay").onclick = togglePlay; $("#pPlay").onclick = togglePlay;
+$("#miniPlay").onclick = togglePlay;
+$("#miniPrev").onclick = () => prev(); $("#miniNext").onclick = () => next();
+$("#miniShuffle").onclick = () => $("#pShuffle").click(); $("#miniRepeat").onclick = () => $("#pRepeat").click();
+$("#miniLike").onclick = () => cur() && toggleLike(cur());
+$("#miniLyrics").onclick = () => { openPlayer(); openLyrics(); };
+$("#miniQueue").onclick = () => { openPlayer(); openQueue(); };
+$("#vol").oninput = e => { audio.volume = e.target.value / 100; ls.set("vol", +e.target.value); };
+$("#vol").value = ls.get("vol", 100); audio.volume = $("#vol").value / 100;
+$("#miniSeek").oninput = e => { seeking = true; e.target.style.setProperty("--p", e.target.value / 10 + "%"); };
+$("#miniSeek").onchange = e => { seeking = false; if (audio.duration) audio.currentTime = e.target.value / 1000 * audio.duration; }; $("#pPlay").onclick = togglePlay;
 $("#playerClose").onclick = closePlayer; $("#pNext").onclick = next; $("#pPrev").onclick = prev;
 $("#pLike").onclick = () => cur() && toggleLike(cur());
 $("#pArtist").onclick = () => { if (!cur()) return; closePlayer(); location.hash = "#/artist/" + encodeURIComponent(cur().artist.split(",")[0].trim()); };
@@ -298,7 +308,10 @@ async function openLyrics() {
   $("#lyrics").querySelectorAll(".line").forEach(el => el.onclick = () => { if (lyr.synced) audio.currentTime = lyr.lines[el.dataset.i][0] / 1000; });
   if (lyr.synced) karaoke();
 }
-async function getLyrics(t) {
+/** "うっせぇわ - Usseewa (Live At …) [MV]" -> the song's name, for finding its lyrics */
+const songName = title => title.replace(/\s*[(\[【].*?[)\]】]/g, "").replace(/\s+(feat|ft)\.?\s.*$/i, "").replace(/\s+[-–]\s+(remaster|live|official|lyric|audio).*$/i, "").trim() || title;
+async function getLyrics(t0) {
+  const t = { ...t0, title: songName(t0.title), artist: t0.artist.split(/,|&| feat\.? /i)[0].trim() };
   const q = `lang=${prefs.translate ? (prefs.lang || (navigator.language || "en").slice(0, 2)) : ""}&title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}&duration=${Math.round((t.duration || audio.duration * 1000 || 0) / 1000)}`;
   try { const r = await fetch("/api/lyrics?" + q); if (r.ok) { const j = await r.json(); if (j?.lines?.length) return { ...j, synced: true }; } } catch {}
   // lrclib straight from the browser
@@ -431,6 +444,8 @@ async function yourMix() {
   for (let k = 0; k < 12; k++) lists.forEach(l => { const t = l[k]; if (t && !seen.has(t.id)) { seen.add(t.id); out.push(t); } });
   return out;
 }
+const skeleton = (n = 8) => `<div class="skel">${'<div class="row"><div class="ph sk"></div><div class="txt"><div class="sk l1"></div><div class="sk l2"></div></div></div>'.repeat(n)}</div>`;
+const coverCard = (t, i) => `<div class="card tcard" data-i="${i}"><img class="cov" loading="lazy" src="${h(t.art || "/icon.svg")}" alt=""><div class="t1">${h(t.title)}</div><div class="t2">${h(t.artist)}</div></div>`;
 function home() {
   const recent = ls.get("recent", []), pls = pinnedFirst(playlists());
   const hr = new Date().getHours(), hi = hr < 5 ? "Good night" : hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
@@ -442,10 +457,10 @@ function home() {
     </div>
     ${session ? "" : `<h2>Your playlists, here too</h2><p class="dim">Log in with your Stash account (Library tab) to get the playlists and liked songs from your phone. Or just start: everything you like and make here is saved on this device.</p>`}
     ${madeForYou()}
-    ${recent.length ? `<h2>Recently played</h2><div id="rec">${recent.slice(0, 12).map(rowHtml).join("")}</div>` : `<h2>Get started</h2><p class="dim">Search for anything. On iPhone: Share → Add to Home Screen for the full app.</p>`}
+    ${recent.length ? `<h2>Jump back in</h2><div class="hscroll" id="rec">${recent.slice(0, 15).map(coverCard).join("")}</div>` : `<h2>Get started</h2><p class="dim">Search for anything. On iPhone: Share → Add to Home Screen for the full app.</p>`}
     ${pls.length > 6 ? `<h2>Your playlists</h2><div class="hscroll">${pls.map(p => `<a class="card" href="#/pl/${plIndex(p)}"><img class="cov" loading="lazy" src="${h(plCover(p))}" alt=""><div class="t1">${h(p.name)}</div><div class="t2">${visible(p.tracks).length} songs</div></a>`).join("")}</div>` : ""}
   </div>`;
-  if (recent.length) bindRows($("#rec"), recent);
+  view.querySelectorAll("#rec .tcard").forEach(c => c.onclick = () => playList(recent.slice(0, 15), +c.dataset.i));
 }
 
 let lastQuery = "", lastRes = null;
@@ -475,7 +490,7 @@ function searchView() {
   let timer;
   const run = async (force) => {
     const q = $("#sq").value.trim(); if (!q || (q === lastQuery && !force)) return; lastQuery = q; $("#tags")?.remove();
-    $("#sr").innerHTML = `<p class="dim">Searching…</p>`;
+    $("#sr").innerHTML = skeleton();
     try { const r = await searchAll(q); if (q === lastQuery) { lastRes = r; paint(); } }
     catch { $("#sr").innerHTML = `<p class="dim">${navigator.onLine ? "Nothing found (or the search servers are busy, try again)" : "You're offline. Downloads still play (Library → Downloads)"}</p>`; }
   };
@@ -572,7 +587,7 @@ async function downloadsView() {
   btn.onclick = async () => { if (confirm("Remove every download?")) { await idb("readwrite", s => s.clear()); downloaded.clear(); route(); } };
 }
 async function listView(title, sub, loader) {
-  view.innerHTML = `<div><a class="back" href="javascript:history.back()"><span class="i i-back"></span>Back</a><h1>${h(title)}</h1><p class="dim">Loading…</p></div>`;
+  view.innerHTML = `<div><a class="back" href="javascript:history.back()"><span class="i i-back"></span>Back</a><h1>${h(title)}</h1>${skeleton()}</div>`;
   try { const list = await loader(); const btn = collection(title, sub(list), `<img class="cov" src="${h(list[0]?.art || "/icon.svg")}" alt="">`, list, { extraBtn: "Add to queue" }); btn.onclick = () => { queue.push(...list.map(clean)); if (qi < 0) load(0); toast("Added to queue"); }; }
   catch { view.querySelector("p").textContent = "Couldn't load that, try again"; }
 }
@@ -637,8 +652,19 @@ function route() {
   else if (page === "mix") listView("Your mix", l => `Made for you · ${l.length} songs`, yourMix)
   else if (page === "similar") { const t = JSON.parse(arg); listView("Similar to " + t.title, l => `${l.length} songs`, () => similar(t)); }
   else home();
-  view.scrollTop = 0;
+  view.scrollTop = 0; topbar();
+  // sidebar (desktop): sections + every playlist, the current one lit
+  document.querySelectorAll("#side [data-side]").forEach(a => a.classList.toggle("on", a.dataset.side === (["pl", "liked", "downloads", "settings"].includes(page) ? "library" : ["artist", "similar", "ytpl"].includes(page) ? "search" : page)));
+  $("#sideList").innerHTML = `<a href="#/liked" class="${page === "liked" ? "on" : ""}">${'<span class="sq liked"><span class="i i-heart"></span></span>'}Liked songs</a><a href="#/downloads" class="${page === "downloads" ? "on" : ""}"><span class="sq dl"><span class="i i-dl"></span></span>Downloads</a>`
+    + pinnedFirst(playlists()).map(p => `<a href="#/pl/${plIndex(p)}" class="${page === "pl" && +arg === plIndex(p) ? "on" : ""}"><img src="${h(plCover(p))}" alt="">${h(p.name)}</a>`).join("");
 }
+// ios large titles: once the big title scrolls away, a small one shows in a blurred bar
+function topbar() {
+  const t = view.querySelector("h1");
+  $("#topTitle").textContent = t?.textContent || "";
+  document.body.classList.toggle("scrolled", !!t && view.scrollTop > (t.offsetTop + t.offsetHeight - 10));
+}
+view.addEventListener("scroll", topbar, { passive: true });
 document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => location.hash = "#/" + b.dataset.tab);
 addEventListener("hashchange", route);
 

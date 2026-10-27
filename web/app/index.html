@@ -17,12 +17,36 @@
 </head>
 <body>
 <div id="app">
+  <aside id="side">
+    <a class="brand" href="#/home"><img src="/icon.svg" alt=""><b>stash</b></a>
+    <a data-side="home" href="#/home"><span class="i i-home"></span>Home</a>
+    <a data-side="search" href="#/search"><span class="i i-search"></span>Search</a>
+    <a data-side="library" href="#/library"><span class="i i-library"></span>Library</a>
+    <div class="sideHead">Playlists</div>
+    <div id="sideList"></div>
+  </aside>
+  <div id="topbar"><span id="topTitle"></span></div>
   <main id="view"></main>
 
   <div id="mini" hidden>
     <img id="miniArt" alt="">
     <div class="miniText"><div id="miniTitle" class="t1"></div><div id="miniArtist" class="t2"></div></div>
-    <button id="miniPlay" class="icon" aria-label="Play / pause"></button>
+    <div class="miniCenter">
+      <div class="miniBtns">
+        <button class="icon wide" id="miniShuffle" aria-label="Shuffle"><span class="i i-shuffle"></span></button>
+        <button class="icon wide" id="miniPrev" aria-label="Previous"><span class="i i-prev"></span></button>
+        <button id="miniPlay" class="icon" aria-label="Play / pause"></button>
+        <button class="icon wide" id="miniNext" aria-label="Next"><span class="i i-next"></span></button>
+        <button class="icon wide" id="miniRepeat" aria-label="Repeat"><span class="i i-repeat"></span></button>
+      </div>
+      <div class="miniSeek wide"><span id="miniPos">0:00</span><input type="range" id="miniSeek" min="0" max="1000" value="0"><span id="miniDur">0:00</span></div>
+    </div>
+    <div class="miniRight wide">
+      <button class="icon" id="miniLike" aria-label="Like"><span class="i i-heart"></span></button>
+      <button class="icon" id="miniLyrics" aria-label="Lyrics"><span class="i i-lyrics"></span></button>
+      <button class="icon" id="miniQueue" aria-label="Queue"><span class="i i-queue"></span></button>
+      <input type="range" id="vol" min="0" max="100" value="100" aria-label="Volume">
+    </div>
     <div id="miniProgress"><div></div></div>
   </div>
 

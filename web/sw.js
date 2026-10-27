@@ -1,5 +1,5 @@
 // offline: the app itself is cached, so it opens without a connection (downloads live in indexeddb)
-const V = "stash-v4";
+const V = "stash-v5";
 const SHELL = ["/app", "/app/index.html", "/app.js", "/style.css", "/icon.svg", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/icon-180.png"];
 self.addEventListener("install", e => e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("activate", e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== "art").map(k => caches.delete(k)))).then(() => self.clients.claim())));

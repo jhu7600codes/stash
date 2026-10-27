@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- downloaded audio is large and re-downloadable, keep it out of backups -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="music/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="music/" />
+    </device-transfer>
+</data-extraction-rules>

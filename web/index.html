@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stash</title>
+<meta name="description" content="Stash: your music, from everywhere. Android, Android TV and the web.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Ccircle cx='54' cy='54' r='54' fill='%237CC8F8'/%3E%3Cpath fill='%230B1E33' d='M39,31a5,5 0 0 1 5,5v36a5,5 0 0 1 -10,0v-36a5,5 0 0 1 5,-5zM54,45a5,5 0 0 1 5,5v8a5,5 0 0 1 -10,0v-8a5,5 0 0 1 5,-5zM69,38a5,5 0 0 1 5,5v22a5,5 0 0 1 -10,0v-22a5,5 0 0 1 5,-5z'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#0b0d12;--card:#151923;--card2:#1d2230;--fg:#eef1f7;--dim:#9aa3b5;--accent:#7CC8F8;--ink:#0B1E33}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--accent)}main{max-width:960px;margin:0 auto;padding:0 16px 120px}
+header{display:flex;align-items:center;gap:12px;padding:20px 0}header b{font-size:22px}
+.logo{width:40px;height:40px}
+.hero{padding:40px 0 24px}.hero h1{font-size:clamp(32px,6vw,52px);line-height:1.1;margin:0 0 12px}.hero p{color:var(--dim);margin:0 0 24px;max-width:560px}
+.btns{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:999px;background:var(--card2);color:var(--fg);text-decoration:none;font-weight:600;border:0;cursor:pointer;font-size:15px}
+.btn.primary{background:var(--accent);color:var(--ink)}
+section{margin-top:48px}h2{font-size:24px;margin:0 0 16px}
+.search{display:flex;gap:8px}.search input{flex:1;min-width:0;padding:12px 16px;border-radius:999px;border:0;background:var(--card2);color:var(--fg);font-size:16px}
+#results{margin-top:16px;display:grid;gap:4px}
+.row{display:flex;align-items:center;gap:12px;padding:8px;border-radius:10px;cursor:pointer}.row:hover{background:var(--card)}
+.row img{width:48px;height:48px;border-radius:6px;object-fit:cover;background:var(--card2)}
+.row .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row .a{color:var(--dim);font-size:14px}
+.row>div{min-width:0;flex:1}
+#bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);padding:10px 16px;display:none;align-items:center;gap:12px;border-top:1px solid #222838}
+#bar img{width:44px;height:44px;border-radius:6px;object-fit:cover}#bar .info{flex:1;min-width:0}#bar audio{width:min(420px,45vw)}
+.note{color:var(--dim);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg class="logo" viewBox="0 0 108 108"><circle cx="54" cy="54" r="54" fill="#7CC8F8"/><path fill="#0B1E33" d="M39,31a5,5 0 0 1 5,5v36a5,5 0 0 1 -10,0v-36a5,5 0 0 1 5,-5zM54,45a5,5 0 0 1 5,5v8a5,5 0 0 1 -10,0v-8a5,5 0 0 1 5,-5zM69,38a5,5 0 0 1 5,5v22a5,5 0 0 1 -10,0v-22a5,5 0 0 1 5,-5z"/></svg>
+    <b>stash</b>
+  </header>
+
+  <div class="hero">
+    <h1>All your music,<br>from everywhere.</h1>
+    <p>YouTube, SoundCloud, Bandcamp, VocaDB and more in one app. Bring your Spotify playlists over, get live karaoke lyrics with translations, and play it on your TV too.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/jhu7600codes/stash/raw/main/dist/stash.apk">Download for Android</a>
+      <a class="btn" href="https://github.com/jhu7600codes/stash/raw/main/dist/stash-armv7.apk">Android TV (32-bit)</a>
+      <a class="btn" href="#web">Play in the browser</a>
+    </div>
+    <p class="note" style="margin-top:12px">Most phones and newer TVs: the first button. Older TVs: the second.</p>
+  </div>
+
+  <section id="web">
+    <h2>Stash on the web</h2>
+    <form class="search" id="f"><input id="q" placeholder="Search songs" autocomplete="off"><button class="btn primary">Search</button></form>
+    <div id="results"></div>
+    <p class="note" id="status"></p>
+  </section>
+</main>
+
+<div id="bar"><img id="bArt" alt=""><div class="info"><div class="t" id="bTitle"></div><div class="note" id="bArtist"></div></div><audio id="audio" controls autoplay></audio></div>
+
+<script>
+// search and audio through public piped servers (they fetch youtube for us, no vpn needed)
+const PIPED = ["https://pipedapi.stellar.afs.ovh", "https://pipedapi.kavin.rocks", "https://pipedapi.adminforge.de"];
+const $ = id => document.getElementById(id);
+async function piped(path) {
+  for (const base of PIPED) {
+    try { const r = await fetch(base + path); if (r.ok) return await r.json(); } catch (e) {}
+  }
+  throw new Error("no server answered");
+}
+$("f").onsubmit = async e => {
+  e.preventDefault();
+  const q = $("q").value.trim(); if (!q) return;
+  $("status").textContent = "Searching…"; $("results").innerHTML = "";
+  try {
+    const d = await piped("/search?filter=music_songs&q=" + encodeURIComponent(q));
+    const items = (d.items || []).filter(i => i.url && i.url.includes("watch"));
+    $("status").textContent = items.length ? "" : "Nothing found";
+    for (const i of items) {
+      const row = document.createElement("div"); row.className = "row";
+      row.innerHTML = `<img loading="lazy" src="${i.thumbnail || ""}" alt=""><div><div class="t"></div><div class="a"></div></div>`;
+      row.querySelector(".t").textContent = i.title; row.querySelector(".a").textContent = i.uploaderName || "";
+      row.onclick = () => play(i);
+      $("results").appendChild(row);
+    }
+  } catch (err) { $("status").textContent = "Search servers are down right now, try again in a bit"; }
+};
+async function play(i) {
+  const id = new URL(i.url, location.href).searchParams.get("v");
+  $("bar").style.display = "flex"; $("bTitle").textContent = i.title; $("bArtist").textContent = "Loading…"; $("bArt").src = i.thumbnail || "";
+  try {
+    const s = await piped("/streams/" + id);
+    const a = (s.audioStreams || []).sort((x, y) => (y.bitrate || 0) - (x.bitrate || 0));
+    const pick = a.find(x => (x.mimeType || "").includes("mp4")) || a[0];
+    if (!pick) throw 0;
+    $("audio").src = pick.url; $("bArtist").textContent = i.uploaderName || "";
+  } catch (e) { $("bArtist").textContent = "Couldn't play this one"; }
+}
+</script>
+</body>
+</html>

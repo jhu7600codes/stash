@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- android tv banner (320x180): the icon's light blue with its three bars -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#7CC8F8" android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#0B1E33"
+        android:pathData="M135,45a10,10 0 0 1 10,10v70a10,10 0 0 1 -20,0v-70a10,10 0 0 1 10,-10zM160,72a10,10 0 0 1 10,10v16a10,10 0 0 1 -20,0v-16a10,10 0 0 1 10,-10zM185,58a10,10 0 0 1 10,10v44a10,10 0 0 1 -20,0v-44a10,10 0 0 1 10,-10z" />
+</vector>

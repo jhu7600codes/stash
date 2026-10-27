@@ -35,12 +35,29 @@ jobs:
           zip -qry Stash.ipa Payload && ls -la Stash.ipa
       - uses: actions/upload-artifact@v4
         with: { name: Stash-ipa, path: Stash.ipa }
-      - name: Publish (releases/download/ios/Stash.ipa)
+      - name: Build for the simulator (Appetize)
+        run: |
+          cd ios
+          set -o pipefail
+          xcodebuild -project Stash.xcodeproj -scheme Stash -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath sim \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee sim.log | grep -E "error:|BUILD" || true
+          test -d sim/Build/Products/Release-iphonesimulator/Stash.app
+          cd sim/Build/Products/Release-iphonesimulator && zip -qry "$GITHUB_WORKSPACE/Stash-sim.zip" Stash.app
+          ls -la "$GITHUB_WORKSPACE/Stash-sim.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: Stash-sim, path: Stash-sim.zip }
+      - name: Publish (releases/download/ios/…)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ios
           name: Stash for iOS (latest build)
-          body: Unsigned, for sideloading (AltStore, SideStore, TrollStore…). Rebuilt on every change to ios/.
-          files: Stash.ipa
+          body: |
+            **Stash.ipa** — unsigned, for sideloading with AltStore / SideStore (signs with your own free Apple ID) or TrollStore.
+            **Stash-sim.zip** — a simulator build, upload it to Appetize.io to run it in the browser.
+            Rebuilt on every change to ios/.
+          files: |
+            Stash.ipa
+            Stash-sim.zip
           prerelease: true
           make_latest: false

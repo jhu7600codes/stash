@@ -1,0 +1,46 @@
+name: iOS build
+on:
+  push:
+    branches: [main]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Newest Xcode (26 for liquid glass)
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -z "$X" ] && X=$(ls -d /Applications/Xcode*.app | grep -v beta | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"; xcodebuild -version
+      - name: Generate the project
+        run: brew install xcodegen && cd ios && xcodegen generate
+      - name: Build (unsigned)
+        run: |
+          cd ios
+          set -o pipefail
+          xcodebuild -project Stash.xcodeproj -scheme Stash -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build.log | grep -E "error:|warning: unre|BUILD" || true
+          test -d build/Build/Products/Release-iphoneos/Stash.app
+      - name: Show errors
+        if: failure()
+        run: grep -E "error:" ios/build.log | sort -u | head -80
+      - name: Package Stash.ipa
+        run: |
+          mkdir Payload && cp -R ios/build/Build/Products/Release-iphoneos/Stash.app Payload/
+          zip -qry Stash.ipa Payload && ls -la Stash.ipa
+      - uses: actions/upload-artifact@v4
+        with: { name: Stash-ipa, path: Stash.ipa }
+      - name: Publish (releases/download/ios/Stash.ipa)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios
+          name: Stash for iOS (latest build)
+          body: Unsigned, for sideloading (AltStore, SideStore, TrollStore…). Rebuilt on every change to ios/.
+          files: Stash.ipa
+          prerelease: true
+          make_latest: false
